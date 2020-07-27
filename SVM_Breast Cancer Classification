@@ -1,0 +1,69 @@
+#Import all the basic libraries that will be used
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+#Import the dataset 
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+
+#understand the data
+print(cancer['DESCR'])
+
+#Set up dataframe for this data
+df_cancer = pd.DataFrame(np.c_[cancer['data'],cancer['target']],columns=np.append(cancer['feature_names'],['target'])) #np.c_ simply concatenates horizontally and get a list of column names by adding target to feature names list
+
+#Data Visualizations
+sns.countplot(x = df_cancer['target'])
+plt.figure(figsize = (20,10))
+sns.heatmap(df_cancer.corr(),annot=True)
+
+#Model Training
+X = df_cancer.drop(['target'],axis = 1)
+y = df_cancer['target']
+
+from sklearn.model_selection import train_test_split 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=5)
+
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix
+
+svc_model = SVC()
+svc_model.fit(X_train,y_train)
+
+y_predict = svc_model.predict(X_test)
+cm = confusion_matrix(y_test,y_predict)
+sns.heatmap(data = cm,annot=True)
+
+# unit normalization  have values between 0 and 1. Can also be achieved through MinMaxScaler
+# Get the minimum  and max value
+min_train = X_train.min()
+range_train = X_train.max() - X_train.min()
+X_train_scale = (X_train-min_train)/(range_train)
+# For testing data unit normalization  have values between 0 and 1
+# Get the minimum  and max value
+min_test = X_test.min()
+range_test = X_test.max() - X_test.min()
+X_test_scale = (X_test-min_test)/(range_test)
+
+#Training unit normalized values
+svc_model.fit(X_train_scale,y_train)
+y_predict = svc_model.predict(X_test_scale)
+
+cm = confusion_matrix(y_test,y_predict)
+sns.heatmap(cm,annot=True)
+print(classification_report(y_test,y_predict))
+
+# Improving the model Part - 2 using GridSearchCV
+param_grid = {'C':[0.1,1,10,100],'gamma':[1,0.1,.01,.001],'kernel':['rbf']}
+from sklearn.model_selection import GridSearchCV
+grid = GridSearchCV(SVC(),param_grid,refit = True, verbose=4)
+grid.fit(X_train_scale,y_train)
+grid.best_params_
+grid_predictions = grid.predict(X_test_scale)
+cm = confusion_matrix(y_test,grid_predictions)
+sns.heatmap(cm,annot=True)
+print(classification_report(y_test,grid_predictions))
